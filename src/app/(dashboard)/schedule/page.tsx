@@ -54,6 +54,7 @@ interface DutyType {
   rotationIntervalHours?: number | null;
   defaultStartHour?: number | null;
   defaultEndHour?: number | null;
+  isActive?: boolean;
 }
 
 interface Assignment {
@@ -139,12 +140,14 @@ export default function SchedulePage() {
   const [autoOpen, setAutoOpen] = useState(false);
   const [autoFrom, setAutoFrom] = useState("");
   const [autoTo, setAutoTo] = useState("");
+  const [autoDutyTypeId, setAutoDutyTypeId] = useState<string>("all");
   const [autoExcludeCommanders, setAutoExcludeCommanders] = useState(true);
   const [autoLoading, setAutoLoading] = useState(false);
 
   // Event detail dialog
   const [detailEvent, setDetailEvent] = useState<DutyEvent | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
+  const [detailAutoAssignLoading, setDetailAutoAssignLoading] = useState(false);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -250,6 +253,7 @@ export default function SchedulePage() {
           body: JSON.stringify({
             fromDate: autoFrom,
             toDate: autoTo,
+            dutyTypeIds: autoDutyTypeId === "all" ? undefined : [parseInt(autoDutyTypeId)],
             excludeCommanders: autoExcludeCommanders,
           }),
         }
@@ -275,6 +279,27 @@ export default function SchedulePage() {
       loadData();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "שגיאה");
+    }
+  };
+
+  const handleEventAutoAssign = async () => {
+    if (!detailEvent) return;
+    setDetailAutoAssignLoading(true);
+    try {
+      const result = await api<{ message: string; assigned: number }>(
+        `/api/duty-events/${detailEvent.id}/auto-assign`,
+        {
+          method: "POST",
+          body: JSON.stringify({ excludeCommanders: autoExcludeCommanders }),
+        }
+      );
+      toast.success(result.message);
+      setDetailOpen(false);
+      loadData();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "שגיאה");
+    } finally {
+      setDetailAutoAssignLoading(false);
     }
   };
 
@@ -479,6 +504,22 @@ export default function SchedulePage() {
                 />
               </div>
             </div>
+            <div className="space-y-2">
+              <Label>סוג תורנות</Label>
+              <Select value={autoDutyTypeId} onValueChange={setAutoDutyTypeId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="כל הסוגים" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">כל סוגי התורנויות</SelectItem>
+                  {dutyTypes.filter((t) => t.id && t.isActive !== false).map((dt) => (
+                    <SelectItem key={dt.id} value={dt.id.toString()}>
+                      {dt.name} ({dt.category})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <div className="flex items-center justify-between rounded-lg border p-4">
               <div className="space-y-0.5">
                 <div className="flex items-center gap-2 font-medium">
@@ -495,8 +536,8 @@ export default function SchedulePage() {
               />
             </div>
             <p className="text-sm text-muted-foreground">
-              השיבוץ ייעשה לכל סוגי התורנויות הפעילים, לפי אלגוריתם הוגנות
-              (החייל עם הכי מעט נקודות ייבחר ראשון).
+              השיבוץ לפי אלגוריתם הוגנות (החייל עם הכי מעט נקודות ייבחר ראשון).
+              {autoDutyTypeId !== "all" && " נבחר סוג תורנות ספציפי."}
             </p>
           </div>
           <DialogFooter>
@@ -504,8 +545,11 @@ export default function SchedulePage() {
               <Button variant="outline">ביטול</Button>
             </DialogClose>
             <Button onClick={handleAutoSchedule} disabled={autoLoading}>
-              {autoLoading && <Loader2 className="w-4 h-4 animate-spin ml-2" />}
-              <Wand2 className="w-4 h-4 ml-2" />
+              {autoLoading ? (
+                <Loader2 className="w-4 h-4 animate-spin ml-2" />
+              ) : (
+                <Wand2 className="w-4 h-4 ml-2" />
+              )}
               הרץ שיבוץ
             </Button>
           </DialogFooter>
@@ -578,6 +622,19 @@ export default function SchedulePage() {
                 )}
 
                 <div className="flex flex-wrap gap-2 pt-2 border-t">
+                  <Button
+                    size="sm"
+                    variant="default"
+                    onClick={handleEventAutoAssign}
+                    disabled={detailAutoAssignLoading}
+                  >
+                    {detailAutoAssignLoading ? (
+                      <Loader2 className="w-4 h-4 animate-spin ml-1" />
+                    ) : (
+                      <Wand2 className="w-4 h-4 ml-1" />
+                    )}
+                    שיבוץ אוטומטי
+                  </Button>
                   <Button
                     size="sm"
                     variant="outline"
