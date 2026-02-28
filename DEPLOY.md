@@ -37,3 +37,17 @@ npm run db:seed
 לאחר ה-seed:
 - **רס״פ ראשי**: 0501234567
 - **שלישות**: 0509999999
+
+## 5. פתרון 404 NOT_FOUND
+
+אם אתה מקבל 404 ב-`rasapnet.vercel.app`:
+
+1. **בדוק Build Logs** – Vercel Dashboard → Project → Deployments → בחר deployment → View Build Logs. אם ה-build נכשל, תקן את השגיאות.
+
+2. **Root Directory** – Settings → General → Root Directory חייב להיות ריק או `.` (שורש הפרויקט).
+
+3. **Framework Preset** – Settings → General → Framework Preset = Next.js.
+
+4. **משתני סביבה** – הוסף `DATABASE_URL` (ו-`JWT_SECRET`) ל-Environment Variables עבור Production, Preview ו-Development.
+
+5. **Redeploy** – אחרי שינויים בהגדרות: Deployments → ⋮ → Redeploy.
