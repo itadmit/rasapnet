@@ -20,6 +20,11 @@
 # production
 /build
 
+# database (local sqlite - not used with Neon)
+*.db
+*.db-shm
+*.db-wal
+
 # misc
 .DS_Store
 *.pem
