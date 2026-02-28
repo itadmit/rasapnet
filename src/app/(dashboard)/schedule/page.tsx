@@ -43,8 +43,19 @@ import {
   ShieldOff,
   Trash2,
   AlertTriangle,
+  FileInput,
+  RotateCcw,
 } from "lucide-react";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 
 interface DutyType {
@@ -64,6 +75,8 @@ interface Assignment {
   id: number;
   soldierId: number;
   soldierName: string;
+  departmentName?: string;
+  roleLabel?: string | null;
   slotStartAt: string | null;
   slotEndAt: string | null;
   isConfirmed: boolean;
@@ -153,6 +166,11 @@ export default function SchedulePage() {
   const [detailAutoAssignLoading, setDetailAutoAssignLoading] = useState(false);
   const [detailManualAssignLoading, setDetailManualAssignLoading] = useState(false);
   const [detailRemoveAssignLoading, setDetailRemoveAssignLoading] = useState<number | null>(null);
+  const [detailResetLoading, setDetailResetLoading] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
+  const [importText, setImportText] = useState("");
+  const [importLoading, setImportLoading] = useState(false);
+  const [importResetFirst, setImportResetFirst] = useState(true);
 
   // Delete week dialog (double confirmation)
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -177,8 +195,9 @@ export default function SchedulePage() {
       setDutyTypes(typesData.filter((t) => t.id)); // all
       setSoldiers(soldiersData.filter((s) => s.status === "active"));
       return eventsData;
-    } catch {
-      toast.error("שגיאה בטעינת נתונים");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "שגיאה בטעינת נתונים";
+      toast.error(msg);
       return [];
     } finally {
       setIsLoading(false);
@@ -351,6 +370,80 @@ export default function SchedulePage() {
       toast.error(err instanceof Error ? err.message : "שגיאה");
     } finally {
       setDetailRemoveAssignLoading(null);
+    }
+  };
+
+  const handleResetAssignments = async () => {
+    if (!detailEvent || !confirm("לאפס את כל השיבוצים של אירוע זה?")) return;
+    setDetailResetLoading(true);
+    try {
+      await api(`/api/duty-events/${detailEvent.id}/assignments`, {
+        method: "DELETE",
+      });
+      toast.success("כל השיבוצים אופסו");
+      const newEvents = await loadData();
+      const updated = newEvents.find((e) => e.id === detailEvent.id);
+      if (updated) setDetailEvent(updated);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "שגיאה");
+    } finally {
+      setDetailResetLoading(false);
+    }
+  };
+
+  const parseImportText = (text: string): { soldierName: string; slotStart: string; slotEnd: string; roleLabel?: string }[] => {
+    const rows: { soldierName: string; slotStart: string; slotEnd: string; roleLabel?: string }[] = [];
+    const lines = text.split(/\r?\n/).filter((l) => l.trim());
+    for (const line of lines) {
+      const parts = line.split(/[\t|]+/).map((p) => p.trim()).filter(Boolean);
+      if (parts.length < 2) continue;
+      const soldierName = parts[0];
+      const timePart = parts[1].replace(/\s*-\s*/g, "-");
+      const [slotStart, slotEnd] = timePart.includes("-")
+        ? timePart.split("-").map((t) => t.trim())
+        : [timePart, timePart];
+      const roleLabel = parts[2];
+      if (soldierName && slotStart && slotEnd) {
+        rows.push({ soldierName, slotStart, slotEnd, roleLabel });
+      }
+    }
+    return rows;
+  };
+
+  const handleImportAssignments = async () => {
+    if (!detailEvent) return;
+    const rows = parseImportText(importText);
+    if (rows.length === 0) {
+      toast.error("לא נמצאו שורות תקינות. פורמט: שם	18:00-20:00	תפקיד");
+      return;
+    }
+    setImportLoading(true);
+    try {
+      if (importResetFirst) {
+        await api(`/api/duty-events/${detailEvent.id}/assignments`, {
+          method: "DELETE",
+        });
+      }
+      const result = await api<{ message: string; inserted: unknown[]; errors?: string[] }>(
+        `/api/duty-events/${detailEvent.id}/import-assignments`,
+        {
+          method: "POST",
+          body: JSON.stringify({ rows }),
+        }
+      );
+      toast.success(result.message);
+      if (result.errors?.length) {
+        toast.warning(`חלק לא הוזנו: ${result.errors.join(", ")}`);
+      }
+      setImportOpen(false);
+      setImportText("");
+      const newEvents = await loadData();
+      const updated = newEvents.find((e) => e.id === detailEvent.id);
+      if (updated) setDetailEvent(updated);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "שגיאה");
+    } finally {
+      setImportLoading(false);
     }
   };
 
@@ -724,7 +817,7 @@ export default function SchedulePage() {
 
       {/* Event Detail Dialog */}
       <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           {detailEvent && (
             <>
               <DialogHeader>
@@ -756,39 +849,51 @@ export default function SchedulePage() {
                       אין חיילים משובצים
                     </p>
                   ) : (
-                    <div className="mt-2 space-y-1">
-                      {detailEvent.assignments.map((a) => (
-                        <div
-                          key={a.id}
-                          className="flex items-center justify-between gap-2 bg-accent rounded-lg p-2"
-                        >
-                          <div className="flex items-center gap-2">
-                            <Users className="w-4 h-4 text-muted-foreground shrink-0" />
-                            <span className="text-sm">{a.soldierName}</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            {a.slotStartAt && a.slotEndAt && (
-                              <span className="text-xs text-muted-foreground">
-                                {new Date(a.slotStartAt).toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" })}–
-                                {new Date(a.slotEndAt).toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" })}
-                              </span>
-                            )}
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7 shrink-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                              onClick={() => handleRemoveAssignment(a.id)}
-                              disabled={detailRemoveAssignLoading === a.id}
-                            >
-                              {detailRemoveAssignLoading === a.id ? (
-                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                              ) : (
-                                <X className="w-3.5 h-3.5" />
-                              )}
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
+                    <div className="mt-2 border rounded-lg overflow-hidden">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="bg-muted/50">
+                            <TableHead className="text-right">שעות המשמרת</TableHead>
+                            <TableHead className="text-right">שם השומר/ת</TableHead>
+                            <TableHead className="text-right">מחלקה</TableHead>
+                            <TableHead className="text-right">הערות</TableHead>
+                            <TableHead className="w-10" />
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {detailEvent.assignments.map((a) => (
+                            <TableRow key={a.id}>
+                              <TableCell className="text-right font-medium">
+                                {a.slotStartAt && a.slotEndAt
+                                  ? `${new Date(a.slotStartAt).toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" })} – ${new Date(a.slotEndAt).toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" })}`
+                                  : "—"}
+                              </TableCell>
+                              <TableCell className="text-right">{a.soldierName}</TableCell>
+                              <TableCell className="text-right text-muted-foreground">
+                                {a.departmentName || "—"}
+                              </TableCell>
+                              <TableCell className="text-right text-muted-foreground text-xs">
+                                {a.roleLabel || "—"}
+                              </TableCell>
+                              <TableCell className="p-1">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                                  onClick={() => handleRemoveAssignment(a.id)}
+                                  disabled={detailRemoveAssignLoading === a.id}
+                                >
+                                  {detailRemoveAssignLoading === a.id ? (
+                                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                  ) : (
+                                    <X className="w-3.5 h-3.5" />
+                                  )}
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
                     </div>
                   )}
                   {(() => {
@@ -842,6 +947,28 @@ export default function SchedulePage() {
                   <Button
                     size="sm"
                     variant="outline"
+                    onClick={() => setImportOpen(true)}
+                  >
+                    <FileInput className="w-4 h-4 ml-1" />
+                    הזן שיבוץ
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="text-amber-600"
+                    onClick={handleResetAssignments}
+                    disabled={detailResetLoading}
+                  >
+                    {detailResetLoading ? (
+                      <Loader2 className="w-4 h-4 animate-spin ml-1" />
+                    ) : (
+                      <RotateCcw className="w-4 h-4 ml-1" />
+                    )}
+                    אפס שיבוצים
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
                     className="text-green-600"
                     onClick={() => updateEventStatus(detailEvent.id, "done")}
                   >
@@ -870,6 +997,54 @@ export default function SchedulePage() {
               </div>
             </>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Import Assignments Dialog */}
+      <Dialog open={importOpen} onOpenChange={(o) => { setImportOpen(o); if (!o) setImportText(""); }}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>הזנת שיבוץ מוכן</DialogTitle>
+            <DialogDescription>
+              הדבק טבלה: שם חייל, טווח שעות (למשל 18:00-20:00), ותפקיד (אופציונלי). כל שורה בשורה נפרדת.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <Textarea
+              placeholder={`אלינור פיין\t18:00-20:00\tשלישות\nעדן חסון\t20:00-22:00\tשלישות\nעדי קדמי\t22:00-00:00\tשלישות`}
+              value={importText}
+              onChange={(e) => setImportText(e.target.value)}
+              rows={12}
+              className="font-mono text-sm"
+              dir="rtl"
+            />
+            <div className="flex items-center justify-between rounded-lg border p-4">
+              <Label htmlFor="import-reset" className="cursor-pointer text-sm font-normal">
+                אפס שיבוצים קיימים לפני ההזנה
+              </Label>
+              <Switch
+                id="import-reset"
+                checked={importResetFirst}
+                onCheckedChange={setImportResetFirst}
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              פורמט: שם [טאב או |] 18:00-20:00 [טאב או |] תפקיד. השדה השלישי (תפקיד) אופציונלי.
+            </p>
+          </div>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="outline">ביטול</Button>
+            </DialogClose>
+            <Button onClick={handleImportAssignments} disabled={importLoading}>
+              {importLoading ? (
+                <Loader2 className="w-4 h-4 animate-spin ml-2" />
+              ) : (
+                <FileInput className="w-4 h-4 ml-2" />
+              )}
+              הזן
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

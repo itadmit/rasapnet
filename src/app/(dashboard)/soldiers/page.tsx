@@ -107,7 +107,7 @@ export default function SoldiersPage() {
       setSoldiers(soldiersData);
       setDepartments(deptsData);
     } catch (err) {
-      toast.error("שגיאה בטעינת נתונים");
+      toast.error(err instanceof Error ? err.message : "שגיאה בטעינת נתונים");
     } finally {
       setIsLoading(false);
     }

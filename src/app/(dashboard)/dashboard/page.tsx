@@ -71,6 +71,7 @@ export default function DashboardPage() {
         setFairness(fairnessData);
       } catch (err) {
         console.error("Failed to load:", err);
+        toast.error(err instanceof Error ? err.message : "שגיאה בטעינת נתונים");
       } finally {
         setIsLoading(false);
       }

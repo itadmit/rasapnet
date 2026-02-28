@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { authenticateRequest, isErrorResponse } from "@/lib/api-auth";
 import { db } from "@/db";
-import { dutyEvents, dutyTypes, dutyAssignments, soldiers } from "@/db/schema";
+import { dutyEvents, dutyTypes, dutyAssignments, soldiers, departments } from "@/db/schema";
 import { eq, and, gte, lte } from "drizzle-orm";
 
 export async function GET(request: NextRequest) {
@@ -44,6 +44,7 @@ export async function GET(request: NextRequest) {
         id: dutyAssignments.id,
         soldierId: dutyAssignments.soldierId,
         soldierName: soldiers.fullName,
+        departmentName: departments.name,
         roleLabel: dutyAssignments.roleLabel,
         slotStartAt: dutyAssignments.slotStartAt,
         slotEndAt: dutyAssignments.slotEndAt,
@@ -52,7 +53,9 @@ export async function GET(request: NextRequest) {
       })
       .from(dutyAssignments)
       .innerJoin(soldiers, eq(dutyAssignments.soldierId, soldiers.id))
-      .where(eq(dutyAssignments.dutyEventId, event.id));
+      .innerJoin(departments, eq(soldiers.departmentId, departments.id))
+      .where(eq(dutyAssignments.dutyEventId, event.id))
+      .orderBy(dutyAssignments.slotStartAt);
 
       return { ...event, assignments };
     })
