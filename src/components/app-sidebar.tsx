@@ -35,7 +35,11 @@ const navItems: NavItem[] = [
   { href: "/settings", label: "הגדרות", icon: Settings },
 ];
 
-export function AppSidebar() {
+interface AppSidebarProps {
+  onNavigate?: () => void;
+}
+
+export function AppSidebar({ onNavigate }: AppSidebarProps) {
   const pathname = usePathname();
   const { user, logout } = useAuth();
 
@@ -65,7 +69,7 @@ export function AppSidebar() {
           const isActive =
             pathname === item.href || pathname.startsWith(item.href + "/");
           return (
-            <Link key={item.href} href={item.href}>
+            <Link key={item.href} href={item.href} onClick={onNavigate}>
               <div
                 className={cn(
                   "flex items-center gap-3 px-3 py-[9px] rounded-[10px] text-[14px] transition-all duration-150",

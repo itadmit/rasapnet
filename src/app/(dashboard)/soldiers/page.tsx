@@ -211,11 +211,11 @@ export default function SoldiersPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center gap-3">
-          <Users className="w-7 h-7 text-primary" />
+          <Users className="w-7 h-7 text-primary shrink-0" />
           <div>
-            <h1 className="text-2xl font-bold">ניהול חיילים</h1>
+            <h1 className="text-xl sm:text-2xl font-bold">ניהול חיילים</h1>
             <p className="text-sm text-muted-foreground">
               {soldiers.length} חיילים במערכת
             </p>
@@ -344,9 +344,9 @@ export default function SoldiersPage() {
 
       {/* Filters */}
       <Card>
-        <CardContent className="pt-6">
-          <div className="flex flex-wrap gap-4">
-            <div className="flex-1 min-w-[200px]">
+        <CardContent className="pt-4 sm:pt-6">
+          <div className="flex flex-col sm:flex-row flex-wrap gap-4">
+            <div className="flex-1 min-w-0 sm:min-w-[200px]">
               <div className="relative">
                 <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
@@ -358,7 +358,7 @@ export default function SoldiersPage() {
               </div>
             </div>
             <Select value={filterDept} onValueChange={setFilterDept}>
-              <SelectTrigger className="w-[180px]">
+              <SelectTrigger className="w-full sm:w-[180px]">
                 <SelectValue placeholder="כל המחלקות" />
               </SelectTrigger>
               <SelectContent>
@@ -371,7 +371,7 @@ export default function SoldiersPage() {
               </SelectContent>
             </Select>
             <Select value={filterStatus} onValueChange={setFilterStatus}>
-              <SelectTrigger className="w-[160px]">
+              <SelectTrigger className="w-full sm:w-[160px]">
                 <SelectValue placeholder="כל הסטטוסים" />
               </SelectTrigger>
               <SelectContent>
@@ -387,10 +387,10 @@ export default function SoldiersPage() {
         </CardContent>
       </Card>
 
-      {/* Table */}
+      {/* Table - scroll on mobile */}
       <Card>
-        <CardContent className="p-0">
-          <Table>
+        <CardContent className="p-0 overflow-x-auto">
+          <Table className="min-w-[600px]">
             <TableHeader>
               <TableRow>
                 <TableHead>שם מלא</TableHead>

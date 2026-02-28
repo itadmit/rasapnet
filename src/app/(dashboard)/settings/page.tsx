@@ -102,9 +102,9 @@ export default function SettingsPage() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center gap-3">
-        <Settings className="w-7 h-7 text-primary" />
+        <Settings className="w-7 h-7 text-primary shrink-0" />
         <div>
-          <h1 className="text-2xl font-bold">הגדרות</h1>
+          <h1 className="text-xl sm:text-2xl font-bold">הגדרות</h1>
           <p className="text-sm text-muted-foreground">
             ניהול מחלקות והגדרות מערכת
           </p>
@@ -144,8 +144,8 @@ export default function SettingsPage() {
                 הוסף מחלקה
               </Button>
             </CardHeader>
-            <CardContent className="p-0">
-              <Table>
+            <CardContent className="p-0 overflow-x-auto">
+              <Table className="min-w-[300px]">
                 <TableHeader>
                   <TableRow>
                     <TableHead>שם</TableHead>

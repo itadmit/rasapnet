@@ -218,11 +218,11 @@ export default function DutyTypesPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center gap-3">
-          <ClipboardList className="w-7 h-7 text-primary" />
+          <ClipboardList className="w-7 h-7 text-primary shrink-0" />
           <div>
-            <h1 className="text-2xl font-bold">סוגי תורנויות</h1>
+            <h1 className="text-xl sm:text-2xl font-bold">סוגי תורנויות</h1>
             <p className="text-sm text-muted-foreground">
               {dutyTypes.filter((d) => d.isActive).length} פעילים מתוך{" "}
               {dutyTypes.length}

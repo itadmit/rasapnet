@@ -160,9 +160,9 @@ export default function WhatsappPage() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center gap-3">
-        <MessageSquare className="w-7 h-7 text-primary" />
+        <MessageSquare className="w-7 h-7 text-primary shrink-0" />
         <div>
-          <h1 className="text-2xl font-bold">וואטסאפ</h1>
+          <h1 className="text-xl sm:text-2xl font-bold">וואטסאפ</h1>
           <p className="text-sm text-muted-foreground">
             חיבור True Story API ושליחת תזכורות
           </p>

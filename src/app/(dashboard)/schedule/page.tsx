@@ -373,12 +373,12 @@ export default function SchedulePage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between flex-wrap gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center gap-3">
-          <CalendarDays className="w-7 h-7 text-primary" />
-          <h1 className="text-2xl font-bold">לוח שיבוצים</h1>
+          <CalendarDays className="w-7 h-7 text-primary shrink-0" />
+          <h1 className="text-xl sm:text-2xl font-bold">לוח שיבוצים</h1>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <Button variant="outline" onClick={() => { setAutoFrom(fromStr); setAutoTo(formatDateStr(weekDates[6])); setAutoOpen(true); }}>
             <Wand2 className="w-4 h-4 ml-2" />
             שיבוץ אוטומטי
@@ -395,7 +395,7 @@ export default function SchedulePage() {
       </div>
 
       {/* Week Navigation */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2 flex-wrap">
         <Button variant="ghost" size="icon" onClick={nextWeek}>
           <ChevronRight className="w-5 h-5" />
         </Button>
@@ -403,7 +403,7 @@ export default function SchedulePage() {
           <Button variant="outline" size="sm" onClick={goToday}>
             היום
           </Button>
-          <span className="text-lg font-semibold">
+          <span className="text-base sm:text-lg font-semibold text-center">
             {weekDates[0].toLocaleDateString("he-IL", { day: "numeric", month: "long" })} -{" "}
             {weekDates[6].toLocaleDateString("he-IL", { day: "numeric", month: "long", year: "numeric" })}
           </span>
@@ -413,8 +413,9 @@ export default function SchedulePage() {
         </Button>
       </div>
 
-      {/* Week Grid */}
-      <div className="grid grid-cols-7 gap-2">
+      {/* Week Grid - scroll horizontally on mobile */}
+      <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
+        <div className="grid grid-cols-7 gap-2 min-w-[560px] sm:min-w-0">
         {weekDates.map((date, idx) => {
           const dayEvents = getEventsForDay(date);
           const today = isToday(date);
@@ -483,6 +484,7 @@ export default function SchedulePage() {
             </div>
           );
         })}
+        </div>
       </div>
 
       {/* New Event Dialog */}

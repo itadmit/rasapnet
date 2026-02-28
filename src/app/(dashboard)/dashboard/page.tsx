@@ -126,9 +126,9 @@ export default function DashboardPage() {
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div className="flex items-start justify-between flex-wrap gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
         <div>
-          <h1 className="text-[28px] font-semibold text-[#1d1d1f] tracking-tight">
+          <h1 className="text-xl sm:text-[28px] font-semibold text-[#1d1d1f] tracking-tight">
             שלום, {user?.name}
           </h1>
           <p className="text-[15px] text-[#86868b] mt-1">

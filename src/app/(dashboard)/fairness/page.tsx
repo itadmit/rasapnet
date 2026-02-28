@@ -113,18 +113,18 @@ export default function FairnessPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between flex-wrap gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center gap-3">
-          <BarChart3 className="w-7 h-7 text-primary" />
+          <BarChart3 className="w-7 h-7 text-primary shrink-0" />
           <div>
-            <h1 className="text-2xl font-bold">דוח הוגנות</h1>
+            <h1 className="text-xl sm:text-2xl font-bold">דוח הוגנות</h1>
             <p className="text-sm text-muted-foreground">
               ניקוד עומס לכל חייל בטווח הזמן הנבחר
             </p>
           </div>
         </div>
         <Select value={range} onValueChange={setRange}>
-          <SelectTrigger className="w-[160px]">
+          <SelectTrigger className="w-full sm:w-[160px]">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -201,7 +201,7 @@ export default function FairnessPage() {
           </CardHeader>
           <CardContent className="p-0">
             <div className="overflow-x-auto">
-              <Table>
+              <Table className="min-w-[500px]">
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-[40px]">#</TableHead>
