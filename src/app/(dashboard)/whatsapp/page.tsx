@@ -15,14 +15,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { DataList, DataListItem, DataListEmpty } from "@/components/data-list";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   MessageSquare,
@@ -34,6 +27,8 @@ import {
   XCircle,
   Wifi,
   WifiOff,
+  Tag,
+  Calendar,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -324,55 +319,23 @@ export default function WhatsappPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="p-0">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>חייל</TableHead>
-                    <TableHead>סוג</TableHead>
-                    <TableHead>סטטוס</TableHead>
-                    <TableHead>תאריך</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {logs.length === 0 ? (
-                    <TableRow>
-                      <TableCell
-                        colSpan={4}
-                        className="text-center text-muted-foreground py-8"
-                      >
-                        אין לוגים עדיין
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    logs.map((log) => (
-                      <TableRow key={log.id}>
-                        <TableCell className="font-medium">
-                          {log.soldierName}
-                        </TableCell>
-                        <TableCell>
-                          {typeLabels[log.type] || log.type}
-                        </TableCell>
-                        <TableCell>
-                          {log.success ? (
-                            <div className="flex items-center gap-1 text-green-600">
-                              <CheckCircle2 className="w-4 h-4" />
-                              <span className="text-sm">הצלחה</span>
-                            </div>
-                          ) : (
-                            <div className="flex items-center gap-1 text-red-600">
-                              <XCircle className="w-4 h-4" />
-                              <span className="text-sm">נכשל</span>
-                            </div>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-sm text-muted-foreground">
-                          {new Date(log.createdAt).toLocaleString("he-IL")}
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
+              <DataList>
+                {logs.length === 0 ? (
+                  <DataListEmpty message="אין לוגים עדיין" />
+                ) : (
+                  logs.map((log) => (
+                    <DataListItem
+                      key={log.id}
+                      icon={log.success ? <CheckCircle2 className="w-5 h-5 text-green-600" /> : <XCircle className="w-5 h-5 text-red-600" />}
+                      title={log.soldierName}
+                      meta={[
+                        { icon: <Tag className="w-3.5 h-3.5" />, value: typeLabels[log.type] || log.type },
+                        { icon: <Calendar className="w-3.5 h-3.5" />, value: new Date(log.createdAt).toLocaleString("he-IL", { dateStyle: "short", timeStyle: "short" }) },
+                      ]}
+                    />
+                  ))
+                )}
+              </DataList>
             </CardContent>
           </Card>
         </TabsContent>

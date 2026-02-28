@@ -8,8 +8,10 @@ import {
   dutyAssignments,
   pointsLedger,
   soldierConstraints,
+  soldierExemptions,
 } from "@/db/schema";
 import { eq, and, gte, sql } from "drizzle-orm";
+import { isExemptFromDuty } from "@/lib/exemptions";
 
 export async function POST(
   request: NextRequest,
@@ -81,6 +83,14 @@ export async function POST(
     constraintMap.set(c.soldierId, list);
   }
 
+  const exemptions = await db.select().from(soldierExemptions);
+  const exemptionMap = new Map<number, string[]>();
+  for (const e of exemptions) {
+    const list = exemptionMap.get(e.soldierId) || [];
+    list.push(e.exemptionCode);
+    exemptionMap.set(e.soldierId, list);
+  }
+
   const dateStr = event.startAt.toISOString().split("T")[0];
   const dayOfWeek = new Date(event.startAt).getDay();
 
@@ -100,6 +110,8 @@ export async function POST(
   const candidates = activeSoldiers
     .filter((s) => !alreadyAssignedIds.has(s.id))
     .filter((s) => {
+      const soldierExempts = exemptionMap.get(s.id) || [];
+      if (isExemptFromDuty(soldierExempts, dutyType)) return false;
       const sc = constraintMap.get(s.id) || [];
       return !sc.some(
         (c) =>

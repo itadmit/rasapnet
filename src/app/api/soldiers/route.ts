@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { authenticateRequest, isErrorResponse } from "@/lib/api-auth";
 import { db } from "@/db";
-import { soldiers, departments } from "@/db/schema";
+import { soldiers, departments, soldierExemptions } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 
 export async function GET(request: NextRequest) {
@@ -39,7 +39,21 @@ export async function GET(request: NextRequest) {
     conditions.length > 0
       ? await query.where(and(...conditions))
       : await query;
-  return NextResponse.json(result);
+
+  const exemptions = await db.select().from(soldierExemptions);
+  const exemptionMap = new Map<number, string[]>();
+  for (const e of exemptions) {
+    const list = exemptionMap.get(e.soldierId) || [];
+    list.push(e.exemptionCode);
+    exemptionMap.set(e.soldierId, list);
+  }
+
+  const withExemptions = result.map((r) => ({
+    ...r,
+    exemptions: exemptionMap.get(r.id) || [],
+  }));
+
+  return NextResponse.json(withExemptions);
 }
 
 export async function POST(request: NextRequest) {
@@ -56,6 +70,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  const { exemptions } = body;
   const [result] = await db
     .insert(soldiers)
     .values({
@@ -67,6 +82,15 @@ export async function POST(request: NextRequest) {
       notes: notes?.trim() || null,
     })
     .returning({ id: soldiers.id });
+
+  if (Array.isArray(exemptions) && exemptions.length > 0) {
+    await db.insert(soldierExemptions).values(
+      exemptions.map((code: string) => ({
+        soldierId: result.id,
+        exemptionCode: code,
+      }))
+    );
+  }
 
   return NextResponse.json({ id: result.id, message: "חייל נוסף בהצלחה" });
 }

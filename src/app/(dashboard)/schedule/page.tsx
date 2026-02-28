@@ -151,6 +151,8 @@ export default function SchedulePage() {
   const [detailEvent, setDetailEvent] = useState<DutyEvent | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailAutoAssignLoading, setDetailAutoAssignLoading] = useState(false);
+  const [detailManualAssignLoading, setDetailManualAssignLoading] = useState(false);
+  const [detailRemoveAssignLoading, setDetailRemoveAssignLoading] = useState<number | null>(null);
 
   // Delete week dialog (double confirmation)
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -174,8 +176,10 @@ export default function SchedulePage() {
       setEvents(eventsData);
       setDutyTypes(typesData.filter((t) => t.id)); // all
       setSoldiers(soldiersData.filter((s) => s.status === "active"));
+      return eventsData;
     } catch {
       toast.error("שגיאה בטעינת נתונים");
+      return [];
     } finally {
       setIsLoading(false);
     }
@@ -309,6 +313,44 @@ export default function SchedulePage() {
       toast.error(err instanceof Error ? err.message : "שגיאה");
     } finally {
       setDetailAutoAssignLoading(false);
+    }
+  };
+
+  const handleManualAssign = async (soldierId: string) => {
+    if (!detailEvent) return;
+    setDetailManualAssignLoading(true);
+    try {
+      await api(`/api/duty-events/${detailEvent.id}/assign`, {
+        method: "POST",
+        body: JSON.stringify({ soldierIds: [soldierId] }),
+      });
+      toast.success("חייל שובץ בהצלחה");
+      const newEvents = await loadData();
+      const updated = newEvents.find((e) => e.id === detailEvent.id);
+      if (updated) setDetailEvent(updated);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "שגיאה");
+    } finally {
+      setDetailManualAssignLoading(false);
+    }
+  };
+
+  const handleRemoveAssignment = async (assignmentId: number) => {
+    if (!detailEvent) return;
+    setDetailRemoveAssignLoading(assignmentId);
+    try {
+      await api(
+        `/api/duty-events/${detailEvent.id}/assignments/${assignmentId}`,
+        { method: "DELETE" }
+      );
+      toast.success("שיבוץ הוסר");
+      const newEvents = await loadData();
+      const updated = newEvents.find((e) => e.id === detailEvent.id);
+      if (updated) setDetailEvent(updated);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "שגיאה");
+    } finally {
+      setDetailRemoveAssignLoading(null);
     }
   };
 
@@ -721,19 +763,57 @@ export default function SchedulePage() {
                           className="flex items-center justify-between gap-2 bg-accent rounded-lg p-2"
                         >
                           <div className="flex items-center gap-2">
-                            <Users className="w-4 h-4 text-muted-foreground" />
+                            <Users className="w-4 h-4 text-muted-foreground shrink-0" />
                             <span className="text-sm">{a.soldierName}</span>
                           </div>
-                          {a.slotStartAt && a.slotEndAt && (
-                            <span className="text-xs text-muted-foreground">
-                              {new Date(a.slotStartAt).toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" })}–
-                              {new Date(a.slotEndAt).toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" })}
-                            </span>
-                          )}
+                          <div className="flex items-center gap-2">
+                            {a.slotStartAt && a.slotEndAt && (
+                              <span className="text-xs text-muted-foreground">
+                                {new Date(a.slotStartAt).toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" })}–
+                                {new Date(a.slotEndAt).toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" })}
+                              </span>
+                            )}
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 shrink-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                              onClick={() => handleRemoveAssignment(a.id)}
+                              disabled={detailRemoveAssignLoading === a.id}
+                            >
+                              {detailRemoveAssignLoading === a.id ? (
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              ) : (
+                                <X className="w-3.5 h-3.5" />
+                              )}
+                            </Button>
+                          </div>
                         </div>
                       ))}
                     </div>
                   )}
+                  {(() => {
+                    const assignedIds = new Set(detailEvent.assignments.map((a) => a.soldierId));
+                    const available = soldiers.filter((s) => !assignedIds.has(s.id));
+                    if (available.length === 0) return null;
+                    return (
+                      <div className="mt-2 pt-2 border-t">
+                        <span className="text-xs font-medium text-muted-foreground">הוסף חייל:</span>
+                        <div className="mt-1 max-h-32 overflow-y-auto space-y-0.5">
+                          {available.map((s) => (
+                            <button
+                              key={s.id}
+                              onClick={() => handleManualAssign(s.id.toString())}
+                              disabled={detailManualAssignLoading}
+                              className="w-full text-right px-2 py-1.5 rounded-md text-sm hover:bg-accent transition-colors flex items-center justify-between"
+                            >
+                              <span>{s.fullName}</span>
+                              <span className="text-xs text-muted-foreground">{s.departmentName}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {detailEvent.notes && (

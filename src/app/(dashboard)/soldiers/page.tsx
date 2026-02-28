@@ -30,14 +30,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { DataList, DataListItem, DataListEmpty } from "@/components/data-list";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Users,
@@ -48,9 +41,11 @@ import {
   Loader2,
   Phone,
   ShieldOff,
+  Building2,
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
+import { EXEMPTION_CODES, EXEMPTION_LABELS } from "@/lib/exemptions";
 
 interface Department {
   id: number;
@@ -65,6 +60,7 @@ interface Soldier {
   departmentName: string;
   status: string;
   excludeFromAutoSchedule: boolean;
+  exemptions: string[];
   notes: string | null;
 }
 
@@ -97,6 +93,7 @@ export default function SoldiersPage() {
     departmentId: "",
     status: "active",
     excludeFromAutoSchedule: false,
+    exemptions: [] as string[],
     notes: "",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -141,6 +138,7 @@ export default function SoldiersPage() {
       departmentId: departments[0]?.id?.toString() || "",
       status: "active",
       excludeFromAutoSchedule: false,
+      exemptions: [],
       notes: "",
     });
     setDialogOpen(true);
@@ -154,6 +152,7 @@ export default function SoldiersPage() {
       departmentId: soldier.departmentId.toString(),
       status: soldier.status,
       excludeFromAutoSchedule: soldier.excludeFromAutoSchedule ?? false,
+      exemptions: soldier.exemptions ?? [],
       notes: soldier.notes || "",
     });
     setDialogOpen(true);
@@ -316,6 +315,33 @@ export default function SoldiersPage() {
                 />
               </div>
               <div className="space-y-2">
+                <Label>פטורים</Label>
+                <p className="text-sm text-muted-foreground">
+                  חייל עם פטור לא יישובץ לסוג התורנות המתאים
+                </p>
+                <div className="flex flex-wrap gap-4 pt-2">
+                  {EXEMPTION_CODES.map((code) => (
+                    <div key={code} className="flex items-center gap-2">
+                      <Switch
+                        id={`exempt-${code}`}
+                        checked={formData.exemptions.includes(code)}
+                        onCheckedChange={(checked) => {
+                          setFormData((prev) => ({
+                            ...prev,
+                            exemptions: checked
+                              ? [...prev.exemptions, code]
+                              : prev.exemptions.filter((c) => c !== code),
+                          }));
+                        }}
+                      />
+                      <Label htmlFor={`exempt-${code}`} className="cursor-pointer text-sm font-normal">
+                        {EXEMPTION_LABELS[code]}
+                      </Label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="space-y-2">
                 <Label>הערות</Label>
                 <Textarea
                   value={formData.notes}
@@ -387,88 +413,69 @@ export default function SoldiersPage() {
         </CardContent>
       </Card>
 
-      {/* Table - scroll on mobile */}
-      <Card>
-        <CardContent className="p-0 overflow-x-auto">
-          <Table className="min-w-[600px]">
-            <TableHeader>
-              <TableRow>
-                <TableHead>שם מלא</TableHead>
-                <TableHead>טלפון</TableHead>
-                <TableHead>מחלקה</TableHead>
-                <TableHead>סטטוס</TableHead>
-                <TableHead>הערות</TableHead>
-                <TableHead className="text-left">פעולות</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredSoldiers.length === 0 ? (
-                <TableRow>
-                  <TableCell
-                    colSpan={6}
-                    className="text-center text-muted-foreground py-8"
+      {/* List - iOS style, no horizontal scroll */}
+      <DataList>
+        {filteredSoldiers.length === 0 ? (
+          <DataListEmpty message="לא נמצאו חיילים" />
+        ) : (
+          filteredSoldiers.map((soldier) => (
+            <DataListItem
+              key={soldier.id}
+              icon={<Users className="w-5 h-5" />}
+              title={
+                <div className="flex items-center gap-2 flex-wrap">
+                  {soldier.excludeFromAutoSchedule && (
+                    <ShieldOff className="w-4 h-4 text-amber-600 shrink-0" />
+                  )}
+                  {soldier.fullName}
+                  {(soldier.exemptions ?? []).length > 0 && (
+                    <span className="flex items-center gap-1 flex-wrap">
+                      {(soldier.exemptions ?? []).map((code) => (
+                        <Badge key={code} variant="outline" className="text-xs">
+                          {EXEMPTION_LABELS[code as keyof typeof EXEMPTION_LABELS] ?? code}
+                        </Badge>
+                      ))}
+                    </span>
+                  )}
+                </div>
+              }
+              subtitle={soldier.notes || undefined}
+              meta={[
+                { icon: <Phone className="w-3.5 h-3.5" />, value: <span dir="ltr">{soldier.phoneE164}</span> },
+                { icon: <Building2 className="w-3.5 h-3.5" />, value: soldier.departmentName },
+                {
+                  icon: null,
+                  value: (
+                    <Badge variant="secondary" className={statusColors[soldier.status] || ""}>
+                      {statusLabels[soldier.status] || soldier.status}
+                    </Badge>
+                  ),
+                },
+              ]}
+              actions={
+                <div className="flex items-center gap-0.5">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => openEditDialog(soldier)}
                   >
-                    לא נמצאו חיילים
-                  </TableCell>
-                </TableRow>
-              ) : (
-                filteredSoldiers.map((soldier) => (
-                  <TableRow key={soldier.id}>
-                    <TableCell className="font-medium">
-                      <div className="flex items-center gap-2">
-                        {soldier.excludeFromAutoSchedule && (
-                          <Badge variant="outline" className="text-amber-600 border-amber-300 text-xs gap-1">
-                            <ShieldOff className="w-3 h-3" />
-                            לא בשיבוץ
-                          </Badge>
-                        )}
-                        {soldier.fullName}
-                      </div>
-                    </TableCell>
-                    <TableCell dir="ltr" className="text-right">
-                      <div className="flex items-center gap-1.5">
-                        <Phone className="w-3.5 h-3.5 text-muted-foreground" />
-                        {soldier.phoneE164}
-                      </div>
-                    </TableCell>
-                    <TableCell>{soldier.departmentName}</TableCell>
-                    <TableCell>
-                      <Badge
-                        variant="secondary"
-                        className={statusColors[soldier.status] || ""}
-                      >
-                        {statusLabels[soldier.status] || soldier.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="max-w-[200px] truncate text-muted-foreground text-sm">
-                      {soldier.notes || "—"}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => openEditDialog(soldier)}
-                        >
-                          <Pencil className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="text-destructive hover:text-destructive"
-                          onClick={() => handleDelete(soldier)}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+                    <Pencil className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-destructive hover:text-destructive"
+                    onClick={() => handleDelete(soldier)}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
+              }
+            />
+          ))
+        )}
+      </DataList>
     </div>
   );
 }

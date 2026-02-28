@@ -67,6 +67,7 @@ const categoryLabels: Record<string, string> = {
   שירותים: "שירותים",
   ניקיון: "ניקיון",
   שמירות: "שמירות",
+  לילה: "לילה",
   אחר: "אחר",
 };
 
@@ -75,6 +76,7 @@ const categoryColors: Record<string, string> = {
   שירותים: "bg-cyan-100 text-cyan-700",
   ניקיון: "bg-lime-100 text-lime-700",
   שמירות: "bg-red-100 text-red-700",
+  לילה: "bg-indigo-100 text-indigo-700",
   אחר: "bg-gray-100 text-gray-700",
 };
 

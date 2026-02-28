@@ -17,14 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { DataList, DataListItem, DataListEmpty } from "@/components/data-list";
 import {
   BarChart3,
   Loader2,
@@ -32,6 +25,8 @@ import {
   TrendingDown,
   Minus,
   Award,
+  Users,
+  ClipboardList,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -186,7 +181,7 @@ export default function FairnessPage() {
         </Card>
       </div>
 
-      {/* Table */}
+      {/* List - iOS style */}
       {isLoading ? (
         <div className="flex items-center justify-center h-32">
           <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -200,63 +195,42 @@ export default function FairnessPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <Table className="min-w-[500px]">
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-[40px]">#</TableHead>
-                    <TableHead>חייל</TableHead>
-                    <TableHead>מחלקה</TableHead>
-                    <TableHead>סטטוס</TableHead>
-                    <TableHead className="text-center">סה״כ נקודות</TableHead>
-                    <TableHead className="text-center">תורנויות</TableHead>
-                    {allCategories.map((cat) => (
-                      <TableHead key={cat} className="text-center text-xs">
-                        {cat}
-                      </TableHead>
-                    ))}
-                    <TableHead className="w-[40px]"></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {data.map((entry, idx) => (
-                    <TableRow key={entry.id}>
-                      <TableCell className="text-muted-foreground">
-                        {idx + 1}
-                      </TableCell>
-                      <TableCell className="font-medium">
-                        {entry.fullName}
-                      </TableCell>
-                      <TableCell>{entry.departmentName}</TableCell>
-                      <TableCell>
-                        <Badge variant="secondary" className="text-xs">
-                          {statusLabels[entry.status] || entry.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell
-                        className={`text-center font-bold ${getPointsColor(entry.totalPoints)}`}
-                      >
-                        {entry.totalPoints.toFixed(1)}
-                      </TableCell>
-                      <TableCell className="text-center">
-                        {entry.totalDuties}
-                      </TableCell>
-                      {allCategories.map((cat) => {
-                        const b = entry.breakdown.find(
-                          (br) => br.category === cat
-                        );
-                        return (
-                          <TableCell key={cat} className="text-center text-xs">
-                            {b ? `${b.count} (${b.points.toFixed(0)})` : "—"}
-                          </TableCell>
-                        );
-                      })}
-                      <TableCell>{getPointsIcon(entry.totalPoints)}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+            <DataList>
+              {data.length === 0 ? (
+                <DataListEmpty message="אין נתונים" />
+              ) : (
+                data.map((entry, idx) => (
+                  <DataListItem
+                    key={entry.id}
+                    icon={getPointsIcon(entry.totalPoints) || <Users className="w-5 h-5" />}
+                    title={
+                      <span className={getPointsColor(entry.totalPoints)}>
+                        {idx + 1}. {entry.fullName}
+                      </span>
+                    }
+                    subtitle={entry.departmentName}
+                    meta={[
+                      { icon: <Award className="w-3.5 h-3.5" />, value: <span className={`font-bold ${getPointsColor(entry.totalPoints)}`}>{entry.totalPoints.toFixed(1)}</span> },
+                      { icon: <ClipboardList className="w-3.5 h-3.5" />, value: `${entry.totalDuties} תור׳` },
+                      { icon: null, value: <Badge variant="secondary" className="text-xs">{statusLabels[entry.status] || entry.status}</Badge> },
+                    ]}
+                    expandable={entry.breakdown.length > 0}
+                  >
+                    {entry.breakdown.length > 0 ? (
+                      <div className="space-y-1.5 text-sm">
+                        <div className="font-medium text-muted-foreground">פירוט לפי קטגוריה</div>
+                        {entry.breakdown.map((b) => (
+                          <div key={b.category} className="flex justify-between">
+                            <span>{b.category}</span>
+                            <span>{b.count} תור׳ ({b.points.toFixed(0)} נק׳)</span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : null}
+                  </DataListItem>
+                ))
+              )}
+            </DataList>
           </CardContent>
         </Card>
       )}

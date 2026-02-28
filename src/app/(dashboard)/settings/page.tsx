@@ -13,14 +13,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { DataList, DataListItem, DataListEmpty } from "@/components/data-list";
 import {
   Dialog,
   DialogContent,
@@ -35,6 +28,7 @@ import {
   Shield,
   Plus,
   Loader2,
+  Calendar,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -144,31 +138,28 @@ export default function SettingsPage() {
                 הוסף מחלקה
               </Button>
             </CardHeader>
-            <CardContent className="p-0 overflow-x-auto">
-              <Table className="min-w-[300px]">
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>שם</TableHead>
-                    <TableHead>תאריך יצירה</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {departments.map((dept) => (
-                    <TableRow key={dept.id}>
-                      <TableCell className="font-medium">
-                        {dept.name}
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {dept.createdAt
-                          ? new Date(dept.createdAt).toLocaleDateString(
-                              "he-IL"
-                            )
-                          : "—"}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+            <CardContent className="p-0">
+              <DataList>
+                {departments.length === 0 ? (
+                  <DataListEmpty message="אין מחלקות" />
+                ) : (
+                  departments.map((dept) => (
+                    <DataListItem
+                      key={dept.id}
+                      icon={<Building2 className="w-5 h-5" />}
+                      title={dept.name}
+                      meta={[
+                        {
+                          icon: <Calendar className="w-3.5 h-3.5" />,
+                          value: dept.createdAt
+                            ? new Date(dept.createdAt).toLocaleDateString("he-IL")
+                            : "—",
+                        },
+                      ]}
+                    />
+                  ))
+                )}
+              </DataList>
             </CardContent>
           </Card>
         </TabsContent>

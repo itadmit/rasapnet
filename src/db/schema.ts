@@ -107,6 +107,18 @@ export const soldiers = pgTable("soldiers", {
     .default(sql`now()`),
 });
 
+// ─── Soldier Exemptions (פטורים) ────────────────────────────────
+export const soldierExemptions = pgTable("soldier_exemptions", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  soldierId: integer("soldier_id")
+    .notNull()
+    .references(() => soldiers.id, { onDelete: "cascade" }),
+  exemptionCode: text("exemption_code").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .default(sql`now()`),
+});
+
 // ─── Soldier Constraints ────────────────────────────────────────
 export const soldierConstraints = pgTable("soldier_constraints", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),

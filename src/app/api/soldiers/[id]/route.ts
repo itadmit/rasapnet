@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { authenticateRequest, isErrorResponse } from "@/lib/api-auth";
 import { db } from "@/db";
-import { soldiers } from "@/db/schema";
+import { soldiers, soldierExemptions } from "@/db/schema";
 import { eq } from "drizzle-orm";
 
 export async function PUT(
@@ -12,13 +12,14 @@ export async function PUT(
   if (isErrorResponse(auth)) return auth;
 
   const { id } = await params;
+  const soldierId = parseInt(id);
   const body = await request.json();
-  const { fullName, phoneE164, departmentId, status, notes, excludeFromAutoSchedule } = body;
+  const { fullName, phoneE164, departmentId, status, notes, excludeFromAutoSchedule, exemptions } = body;
 
   const existingRows = await db
     .select()
     .from(soldiers)
-    .where(eq(soldiers.id, parseInt(id)));
+    .where(eq(soldiers.id, soldierId));
   const existing = existingRows[0];
 
   if (!existing) {
@@ -34,7 +35,19 @@ export async function PUT(
       ...(notes !== undefined && { notes: notes?.trim() || null }),
       ...(excludeFromAutoSchedule !== undefined && { excludeFromAutoSchedule: !!excludeFromAutoSchedule }),
     })
-    .where(eq(soldiers.id, parseInt(id)));
+    .where(eq(soldiers.id, soldierId));
+
+  if (Array.isArray(exemptions)) {
+    await db.delete(soldierExemptions).where(eq(soldierExemptions.soldierId, soldierId));
+    if (exemptions.length > 0) {
+      await db.insert(soldierExemptions).values(
+        exemptions.map((code: string) => ({
+          soldierId,
+          exemptionCode: code,
+        }))
+      );
+    }
+  }
 
   return NextResponse.json({ message: "חייל עודכן בהצלחה" });
 }
