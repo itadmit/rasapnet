@@ -37,9 +37,12 @@ import {
   Wand2,
   CheckCircle2,
   XCircle,
+  X,
   Clock,
   Users,
   ShieldOff,
+  Trash2,
+  AlertTriangle,
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
@@ -149,7 +152,13 @@ export default function SchedulePage() {
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailAutoAssignLoading, setDetailAutoAssignLoading] = useState(false);
 
+  // Delete week dialog (double confirmation)
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteStep, setDeleteStep] = useState(0);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [deletingEventId, setDeletingEventId] = useState<number | null>(null);
 
   const weekDates = getWeekDates(currentWeek);
   const fromStr = formatDateStr(weekDates[0]);
@@ -309,6 +318,47 @@ export default function SchedulePage() {
     );
   };
 
+  const openDeleteDialog = () => {
+    setDeleteStep(0);
+    setDeleteOpen(true);
+  };
+
+  const handleDeleteEvent = async (eventId: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!confirm("למחוק את אירוע התורנות?")) return;
+    setDeletingEventId(eventId);
+    try {
+      await api(`/api/duty-events/${eventId}`, { method: "DELETE" });
+      toast.success("אירוע נמחק");
+      loadData();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "שגיאה");
+    } finally {
+      setDeletingEventId(null);
+    }
+  };
+
+  const handleDeleteWeek = async () => {
+    if (deleteStep === 0) {
+      setDeleteStep(1);
+      return;
+    }
+    setDeleteLoading(true);
+    try {
+      const result = await api<{ message: string; deleted: number }>(
+        `/api/duty-events?from=${fromStr}&to=${formatDateStr(weekDates[6])}`,
+        { method: "DELETE" }
+      );
+      toast.success(result.message);
+      setDeleteOpen(false);
+      loadData();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "שגיאה");
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
   const isToday = (date: Date) =>
     formatDateStr(date) === formatDateStr(new Date());
 
@@ -332,6 +382,14 @@ export default function SchedulePage() {
           <Button variant="outline" onClick={() => { setAutoFrom(fromStr); setAutoTo(formatDateStr(weekDates[6])); setAutoOpen(true); }}>
             <Wand2 className="w-4 h-4 ml-2" />
             שיבוץ אוטומטי
+          </Button>
+          <Button
+            variant="outline"
+            className="text-destructive border-destructive hover:bg-destructive hover:text-destructive-foreground"
+            onClick={openDeleteDialog}
+          >
+            <Trash2 className="w-4 h-4 ml-2" />
+            מחק שיבוצים
           </Button>
         </div>
       </div>
@@ -375,24 +433,41 @@ export default function SchedulePage() {
                 </CardHeader>
                 <CardContent className="p-2 pt-0 space-y-1.5">
                   {dayEvents.map((event) => (
-                    <button
+                    <div
                       key={event.id}
-                      onClick={() => { setDetailEvent(event); setDetailOpen(true); }}
-                      className={`w-full text-right p-2 rounded-md text-xs border transition-colors hover:opacity-80 ${statusColors[event.status] || statusColors.planned}`}
+                      className={`group relative flex items-start gap-1 text-right p-2 rounded-md text-xs border transition-colors ${statusColors[event.status] || statusColors.planned}`}
                     >
-                      <div className="font-medium truncate">{event.dutyTypeName}</div>
-                      {event.assignments.length > 0 && (
-                        <div className="text-[10px] mt-0.5 opacity-80 truncate">
-                          {event.assignments
-                            .map((a) =>
-                              a.slotStartAt && a.slotEndAt
-                                ? `${a.soldierName} (${new Date(a.slotStartAt).toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" })}–${new Date(a.slotEndAt).toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" })})`
-                                : a.soldierName
-                            )
-                            .join(", ")}
-                        </div>
-                      )}
-                    </button>
+                      <button
+                        onClick={() => { setDetailEvent(event); setDetailOpen(true); }}
+                        className="flex-1 min-w-0 text-right hover:opacity-80"
+                      >
+                        <div className="font-medium truncate">{event.dutyTypeName}</div>
+                        {event.assignments.length > 0 && (
+                          <div className="text-[10px] mt-0.5 opacity-80 truncate">
+                            {event.assignments
+                              .map((a) =>
+                                a.slotStartAt && a.slotEndAt
+                                  ? `${a.soldierName} (${new Date(a.slotStartAt).toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" })}–${new Date(a.slotEndAt).toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" })})`
+                                  : a.soldierName
+                              )
+                              .join(", ")}
+                          </div>
+                        )}
+                      </button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 shrink-0 rounded-full text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                        onClick={(e) => handleDeleteEvent(event.id, e)}
+                        disabled={deletingEventId === event.id}
+                      >
+                        {deletingEventId === event.id ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <X className="w-3.5 h-3.5" />
+                        )}
+                      </Button>
+                    </div>
                   ))}
                   <Button
                     variant="ghost"
@@ -469,6 +544,53 @@ export default function SchedulePage() {
             <Button onClick={handleCreateEvent} disabled={isSubmitting}>
               {isSubmitting && <Loader2 className="w-4 h-4 animate-spin ml-2" />}
               צור אירוע
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Week Dialog - Double confirmation */}
+      <Dialog open={deleteOpen} onOpenChange={(open) => { setDeleteOpen(open); if (!open) setDeleteStep(0); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="w-5 h-5" />
+              מחיקת כל השיבוצים
+            </DialogTitle>
+            <DialogDescription>
+              {deleteStep === 0 ? (
+                <>
+                  האם למחוק את כל השיבוצים של השבוע{" "}
+                  {weekDates[0].toLocaleDateString("he-IL", { day: "numeric", month: "long" })} –{" "}
+                  {weekDates[6].toLocaleDateString("he-IL", { day: "numeric", month: "long", year: "numeric" })}?
+                  <br />
+                  <span className="font-medium text-foreground mt-2 block">פעולה זו אינה ניתנת לביטול.</span>
+                </>
+              ) : (
+                <>
+                  <span className="font-semibold text-foreground">אימות כפול:</span> לחיצה נוספת תמחק את כל השיבוצים.
+                  <br />
+                  האם להמשיך?
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="outline">ביטול</Button>
+            </DialogClose>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteWeek}
+              disabled={deleteLoading}
+            >
+              {deleteLoading ? (
+                <Loader2 className="w-4 h-4 animate-spin ml-2" />
+              ) : deleteStep === 0 ? (
+                "מחק"
+              ) : (
+                "אישור סופי – מחק"
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

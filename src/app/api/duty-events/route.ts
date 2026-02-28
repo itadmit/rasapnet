@@ -92,3 +92,38 @@ export async function POST(request: NextRequest) {
   });
 }
 
+export async function DELETE(request: NextRequest) {
+  const auth = authenticateRequest(request);
+  if (isErrorResponse(auth)) return auth;
+
+  const url = new URL(request.url);
+  const from = url.searchParams.get("from");
+  const to = url.searchParams.get("to");
+
+  if (!from || !to) {
+    return NextResponse.json(
+      { error: "נדרש טווח תאריכים (from, to)" },
+      { status: 400 }
+    );
+  }
+
+  const conditions = [
+    gte(dutyEvents.startAt, new Date(from)),
+    lte(dutyEvents.startAt, new Date(to + "T23:59:59")),
+  ];
+
+  const toDelete = await db
+    .select({ id: dutyEvents.id })
+    .from(dutyEvents)
+    .where(and(...conditions));
+
+  for (const row of toDelete) {
+    await db.delete(dutyEvents).where(eq(dutyEvents.id, row.id));
+  }
+
+  return NextResponse.json({
+    message: `נמחקו ${toDelete.length} אירועים`,
+    deleted: toDelete.length,
+  });
+}
+
