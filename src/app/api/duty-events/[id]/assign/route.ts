@@ -12,7 +12,7 @@ export async function POST(
 
   const { id } = await params;
   const body = await request.json();
-  const { soldierIds } = body;
+  const { soldierIds, slotStartAt, slotEndAt } = body;
 
   if (!soldierIds || !Array.isArray(soldierIds) || soldierIds.length === 0) {
     return NextResponse.json(
@@ -25,6 +25,8 @@ export async function POST(
     await db.insert(dutyAssignments).values({
       dutyEventId: parseInt(id),
       soldierId: parseInt(soldierId),
+      slotStartAt: slotStartAt ? new Date(slotStartAt) : null,
+      slotEndAt: slotEndAt ? new Date(slotEndAt) : null,
     });
   }
 

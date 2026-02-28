@@ -47,7 +47,9 @@ import {
   Search,
   Loader2,
   Phone,
+  ShieldOff,
 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 
 interface Department {
@@ -62,6 +64,7 @@ interface Soldier {
   departmentId: number;
   departmentName: string;
   status: string;
+  excludeFromAutoSchedule: boolean;
   notes: string | null;
 }
 
@@ -93,6 +96,7 @@ export default function SoldiersPage() {
     phoneE164: "",
     departmentId: "",
     status: "active",
+    excludeFromAutoSchedule: false,
     notes: "",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -136,6 +140,7 @@ export default function SoldiersPage() {
       phoneE164: "",
       departmentId: departments[0]?.id?.toString() || "",
       status: "active",
+      excludeFromAutoSchedule: false,
       notes: "",
     });
     setDialogOpen(true);
@@ -148,6 +153,7 @@ export default function SoldiersPage() {
       phoneE164: soldier.phoneE164,
       departmentId: soldier.departmentId.toString(),
       status: soldier.status,
+      excludeFromAutoSchedule: soldier.excludeFromAutoSchedule ?? false,
       notes: soldier.notes || "",
     });
     setDialogOpen(true);
@@ -295,6 +301,20 @@ export default function SoldiersPage() {
                   </SelectContent>
                 </Select>
               </div>
+              <div className="flex items-center justify-between rounded-lg border p-4">
+                <div className="space-y-0.5">
+                  <Label className="text-base">לא לשבץ אוטומטית</Label>
+                  <p className="text-sm text-muted-foreground">
+                    מפקדים וסגנים – לא ייכללו בשיבוץ אוטומטי
+                  </p>
+                </div>
+                <Switch
+                  checked={formData.excludeFromAutoSchedule}
+                  onCheckedChange={(v) =>
+                    setFormData({ ...formData, excludeFromAutoSchedule: v })
+                  }
+                />
+              </div>
               <div className="space-y-2">
                 <Label>הערות</Label>
                 <Textarea
@@ -395,7 +415,15 @@ export default function SoldiersPage() {
                 filteredSoldiers.map((soldier) => (
                   <TableRow key={soldier.id}>
                     <TableCell className="font-medium">
-                      {soldier.fullName}
+                      <div className="flex items-center gap-2">
+                        {soldier.excludeFromAutoSchedule && (
+                          <Badge variant="outline" className="text-amber-600 border-amber-300 text-xs gap-1">
+                            <ShieldOff className="w-3 h-3" />
+                            לא בשיבוץ
+                          </Badge>
+                        )}
+                        {soldier.fullName}
+                      </div>
                     </TableCell>
                     <TableCell dir="ltr" className="text-right">
                       <div className="flex items-center gap-1.5">

@@ -59,7 +59,7 @@ export async function GET(request: NextRequest) {
         );
 
       // Breakdown by category
-      const breakdown = await db
+      const breakdownRows = await db
         .select({
           category: dutyTypes.category,
           count: count(),
@@ -76,10 +76,16 @@ export async function GET(request: NextRequest) {
         )
         .groupBy(dutyTypes.category);
 
+      const breakdown = breakdownRows.map((r) => ({
+        ...r,
+        count: Number(r.count),
+        points: Number(r.points),
+      }));
+
       return {
         ...soldier,
-        totalPoints: pointsResult?.total ?? 0,
-        totalDuties: dutiesResult?.count ?? 0,
+        totalPoints: Number(pointsResult?.total ?? 0),
+        totalDuties: Number(dutiesResult?.count ?? 0),
         breakdown,
       };
     })

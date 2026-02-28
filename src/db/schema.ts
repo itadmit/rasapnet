@@ -32,6 +32,10 @@ export const dutyFrequencyEnum = pgEnum("duty_frequency", [
   "weekly",
   "monthly",
 ]);
+export const dutyScheduleTypeEnum = pgEnum("duty_schedule_type", [
+  "daily",
+  "hourly",
+]);
 export const dutyEventStatusEnum = pgEnum("duty_event_status", [
   "planned",
   "done",
@@ -96,6 +100,7 @@ export const soldiers = pgTable("soldiers", {
     .notNull()
     .references(() => departments.id, { onDelete: "cascade" }),
   status: soldierStatusEnum("status").notNull().default("active"),
+  excludeFromAutoSchedule: boolean("exclude_from_auto_schedule").notNull().default(false),
   notes: text("notes"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
@@ -128,6 +133,12 @@ export const dutyTypes = pgTable("duty_types", {
   defaultFrequency: dutyFrequencyEnum("default_frequency")
     .notNull()
     .default("daily"),
+  scheduleType: dutyScheduleTypeEnum("schedule_type")
+    .notNull()
+    .default("daily"),
+  rotationIntervalHours: integer("rotation_interval_hours"),
+  defaultStartHour: integer("default_start_hour"),
+  defaultEndHour: integer("default_end_hour"),
   isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
@@ -159,6 +170,8 @@ export const dutyAssignments = pgTable("duty_assignments", {
   soldierId: integer("soldier_id")
     .notNull()
     .references(() => soldiers.id, { onDelete: "cascade" }),
+  slotStartAt: timestamp("slot_start_at", { withTimezone: true }),
+  slotEndAt: timestamp("slot_end_at", { withTimezone: true }),
   roleLabel: text("role_label"),
   isConfirmed: boolean("is_confirmed").default(false),
   doneAt: timestamp("done_at", { withTimezone: true }),

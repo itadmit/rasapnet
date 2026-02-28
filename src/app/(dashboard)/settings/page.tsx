@@ -35,7 +35,6 @@ import {
   Shield,
   Plus,
   Loader2,
-  Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -193,7 +192,7 @@ export default function SettingsPage() {
                 </div>
                 <div className="bg-muted rounded-lg p-4">
                   <p className="text-sm text-muted-foreground">מסד נתונים</p>
-                  <p className="font-bold mt-1">SQLite</p>
+                  <p className="font-bold mt-1">PostgreSQL (Neon)</p>
                 </div>
                 <div className="bg-muted rounded-lg p-4">
                   <p className="text-sm text-muted-foreground">Framework</p>
@@ -205,7 +204,7 @@ export default function SettingsPage() {
                   ⚠️ גרסת פיתוח
                 </p>
                 <p className="text-sm text-amber-700 mt-1">
-                  המערכת בגרסת פיתוח. התחברות ללא OTP, מסד נתונים מקומי.
+                  המערכת בגרסת פיתוח. התחברות ללא OTP.
                 </p>
               </div>
             </CardContent>

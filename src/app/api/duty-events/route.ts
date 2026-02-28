@@ -23,6 +23,8 @@ export async function GET(request: NextRequest) {
       dutyTypeName: dutyTypes.name,
       dutyTypeCategory: dutyTypes.category,
       weightPoints: dutyTypes.weightPoints,
+      scheduleType: dutyTypes.scheduleType,
+      rotationIntervalHours: dutyTypes.rotationIntervalHours,
       startAt: dutyEvents.startAt,
       endAt: dutyEvents.endAt,
       status: dutyEvents.status,
@@ -43,6 +45,8 @@ export async function GET(request: NextRequest) {
         soldierId: dutyAssignments.soldierId,
         soldierName: soldiers.fullName,
         roleLabel: dutyAssignments.roleLabel,
+        slotStartAt: dutyAssignments.slotStartAt,
+        slotEndAt: dutyAssignments.slotEndAt,
         isConfirmed: dutyAssignments.isConfirmed,
         doneAt: dutyAssignments.doneAt,
       })

@@ -16,7 +16,17 @@ export async function POST(request: NextRequest) {
   if (isErrorResponse(auth)) return auth;
 
   const body = await request.json();
-  const { name, category, weightPoints, defaultRequiredPeople, defaultFrequency } = body;
+  const {
+    name,
+    category,
+    weightPoints,
+    defaultRequiredPeople,
+    defaultFrequency,
+    scheduleType,
+    rotationIntervalHours,
+    defaultStartHour,
+    defaultEndHour,
+  } = body;
 
   if (!name?.trim() || !category?.trim()) {
     return NextResponse.json({ error: "שם וקטגוריה נדרשים" }, { status: 400 });
@@ -30,6 +40,10 @@ export async function POST(request: NextRequest) {
       weightPoints: weightPoints || 1,
       defaultRequiredPeople: defaultRequiredPeople || 1,
       defaultFrequency: defaultFrequency || "daily",
+      scheduleType: scheduleType || "daily",
+      rotationIntervalHours: scheduleType === "hourly" ? rotationIntervalHours ?? 2 : null,
+      defaultStartHour: scheduleType === "hourly" ? defaultStartHour ?? 8 : null,
+      defaultEndHour: scheduleType === "hourly" ? defaultEndHour ?? 20 : null,
       isActive: true,
     })
     .returning({ id: dutyTypes.id });

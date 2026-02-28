@@ -39,7 +39,9 @@ import {
   XCircle,
   Clock,
   Users,
+  ShieldOff,
 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 
 interface DutyType {
@@ -48,12 +50,18 @@ interface DutyType {
   category: string;
   weightPoints: number;
   defaultRequiredPeople: number;
+  scheduleType?: string;
+  rotationIntervalHours?: number | null;
+  defaultStartHour?: number | null;
+  defaultEndHour?: number | null;
 }
 
 interface Assignment {
   id: number;
   soldierId: number;
   soldierName: string;
+  slotStartAt: string | null;
+  slotEndAt: string | null;
   isConfirmed: boolean;
   doneAt: string | null;
 }
@@ -64,6 +72,7 @@ interface DutyEvent {
   dutyTypeName: string;
   dutyTypeCategory: string;
   weightPoints: number;
+  scheduleType?: string;
   startAt: string;
   endAt: string | null;
   status: string;
@@ -130,6 +139,7 @@ export default function SchedulePage() {
   const [autoOpen, setAutoOpen] = useState(false);
   const [autoFrom, setAutoFrom] = useState("");
   const [autoTo, setAutoTo] = useState("");
+  const [autoExcludeCommanders, setAutoExcludeCommanders] = useState(true);
   const [autoLoading, setAutoLoading] = useState(false);
 
   // Event detail dialog
@@ -194,13 +204,18 @@ export default function SchedulePage() {
       toast.error("נא לבחור סוג תורנות ותאריך");
       return;
     }
+    const dt = dutyTypes.find((t) => t.id.toString() === newEventType);
+    const isHourly = dt?.scheduleType === "hourly";
+    const startH = dt?.defaultStartHour ?? 8;
+    const endH = dt?.defaultEndHour ?? 20;
     setIsSubmitting(true);
     try {
       const result = await api<{ id: number }>("/api/duty-events", {
         method: "POST",
         body: JSON.stringify({
           dutyTypeId: newEventType,
-          startAt: `${newEventDate}T08:00:00`,
+          startAt: `${newEventDate}T${String(startH).padStart(2, "0")}:00:00`,
+          endAt: isHourly ? `${newEventDate}T${String(endH).padStart(2, "0")}:00:00` : undefined,
         }),
       });
 
@@ -232,7 +247,11 @@ export default function SchedulePage() {
         "/api/auto-schedule",
         {
           method: "POST",
-          body: JSON.stringify({ fromDate: autoFrom, toDate: autoTo }),
+          body: JSON.stringify({
+            fromDate: autoFrom,
+            toDate: autoTo,
+            excludeCommanders: autoExcludeCommanders,
+          }),
         }
       );
       toast.success(result.message);
@@ -339,7 +358,13 @@ export default function SchedulePage() {
                       <div className="font-medium truncate">{event.dutyTypeName}</div>
                       {event.assignments.length > 0 && (
                         <div className="text-[10px] mt-0.5 opacity-80 truncate">
-                          {event.assignments.map((a) => a.soldierName).join(", ")}
+                          {event.assignments
+                            .map((a) =>
+                              a.slotStartAt && a.slotEndAt
+                                ? `${a.soldierName} (${new Date(a.slotStartAt).toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" })}–${new Date(a.slotEndAt).toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" })})`
+                                : a.soldierName
+                            )
+                            .join(", ")}
                         </div>
                       )}
                     </button>
@@ -454,6 +479,21 @@ export default function SchedulePage() {
                 />
               </div>
             </div>
+            <div className="flex items-center justify-between rounded-lg border p-4">
+              <div className="space-y-0.5">
+                <div className="flex items-center gap-2 font-medium">
+                  <ShieldOff className="w-4 h-4 text-amber-600" />
+                  לא לשבץ מפקדים וסגנים
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  חיילים שמסומנים כ״לא לשבץ אוטומטית״ לא ייכללו
+                </p>
+              </div>
+              <Switch
+                checked={autoExcludeCommanders}
+                onCheckedChange={setAutoExcludeCommanders}
+              />
+            </div>
             <p className="text-sm text-muted-foreground">
               השיבוץ ייעשה לכל סוגי התורנויות הפעילים, לפי אלגוריתם הוגנות
               (החייל עם הכי מעט נקודות ייבחר ראשון).
@@ -510,10 +550,18 @@ export default function SchedulePage() {
                       {detailEvent.assignments.map((a) => (
                         <div
                           key={a.id}
-                          className="flex items-center gap-2 bg-accent rounded-lg p-2"
+                          className="flex items-center justify-between gap-2 bg-accent rounded-lg p-2"
                         >
-                          <Users className="w-4 h-4 text-muted-foreground" />
-                          <span className="text-sm">{a.soldierName}</span>
+                          <div className="flex items-center gap-2">
+                            <Users className="w-4 h-4 text-muted-foreground" />
+                            <span className="text-sm">{a.soldierName}</span>
+                          </div>
+                          {a.slotStartAt && a.slotEndAt && (
+                            <span className="text-xs text-muted-foreground">
+                              {new Date(a.slotStartAt).toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" })}–
+                              {new Date(a.slotEndAt).toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" })}
+                            </span>
+                          )}
                         </div>
                       ))}
                     </div>

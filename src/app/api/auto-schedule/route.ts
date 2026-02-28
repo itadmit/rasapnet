@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
   if (isErrorResponse(auth)) return auth;
 
   const body = await request.json();
-  const { fromDate, toDate, dutyTypeIds } = body;
+  const { fromDate, toDate, dutyTypeIds, excludeCommanders } = body;
 
   if (!fromDate || !toDate) {
     return NextResponse.json(
@@ -35,11 +35,15 @@ export async function POST(request: NextRequest) {
     types = types.filter((t) => dutyTypeIds.includes(t.id));
   }
 
-  // Get active soldiers
-  const activeSoldiers = await db
+  // Get active soldiers (optionally exclude commanders/deputy commanders)
+  let activeSoldiers = await db
     .select()
     .from(soldiers)
     .where(eq(soldiers.status, "active"));
+
+  if (excludeCommanders) {
+    activeSoldiers = activeSoldiers.filter((s) => !s.excludeFromAutoSchedule);
+  }
 
   if (activeSoldiers.length === 0) {
     return NextResponse.json(
@@ -109,15 +113,37 @@ export async function POST(request: NextRequest) {
 
       if (candidates.length === 0) continue;
 
-      const needed = dutyType.defaultRequiredPeople;
+      const isHourly = dutyType.scheduleType === "hourly";
+      const startHour = dutyType.defaultStartHour ?? 8;
+      const endHour = dutyType.defaultEndHour ?? 20;
+      const intervalHours = dutyType.rotationIntervalHours ?? 2;
+
+      let eventStartAt: Date;
+      let eventEndAt: Date | null = null;
+      let slots: { slotStart: Date; slotEnd: Date }[] = [];
+
+      if (isHourly) {
+        eventStartAt = new Date(`${dateStr}T${String(startHour).padStart(2, "0")}:00:00`);
+        eventEndAt = new Date(`${dateStr}T${String(endHour).padStart(2, "0")}:00:00`);
+        for (let h = startHour; h < endHour; h += intervalHours) {
+          slots.push({
+            slotStart: new Date(`${dateStr}T${String(h).padStart(2, "0")}:00:00`),
+            slotEnd: new Date(`${dateStr}T${String(Math.min(h + intervalHours, endHour)).padStart(2, "0")}:00:00`),
+          });
+        }
+      } else {
+        eventStartAt = new Date(`${dateStr}T08:00:00`);
+      }
+
+      const needed = isHourly ? slots.length : dutyType.defaultRequiredPeople;
       const assigned = candidates.slice(0, Math.min(needed, candidates.length));
 
-      // Create event
       const [eventResult] = await db
         .insert(dutyEvents)
         .values({
           dutyTypeId: dutyType.id,
-          startAt: new Date(`${dateStr}T08:00:00`),
+          startAt: eventStartAt,
+          endAt: eventEndAt,
           status: "planned",
           createdBy: auth.userId,
         })
@@ -125,25 +151,43 @@ export async function POST(request: NextRequest) {
 
       const eventId = eventResult.id;
 
-      // Assign soldiers
-      for (const soldier of assigned) {
-        await db.insert(dutyAssignments).values({
-          dutyEventId: eventId,
-          soldierId: soldier.id,
+      if (isHourly) {
+        for (let i = 0; i < assigned.length && i < slots.length; i++) {
+          const soldier = assigned[i];
+          const { slotStart, slotEnd } = slots[i];
+          await db.insert(dutyAssignments).values({
+            dutyEventId: eventId,
+            soldierId: soldier.id,
+            slotStartAt: slotStart,
+            slotEndAt: slotEnd,
+          });
+          soldierPoints.set(
+            soldier.id,
+            (soldierPoints.get(soldier.id) || 0) + dutyType.weightPoints
+          );
+        }
+        created.push({
+          date: dateStr,
+          dutyType: dutyType.name,
+          soldiers: assigned.map((s) => s.fullName),
         });
-
-        // Update running point count
-        soldierPoints.set(
-          soldier.id,
-          (soldierPoints.get(soldier.id) || 0) + dutyType.weightPoints
-        );
+      } else {
+        for (const soldier of assigned) {
+          await db.insert(dutyAssignments).values({
+            dutyEventId: eventId,
+            soldierId: soldier.id,
+          });
+          soldierPoints.set(
+            soldier.id,
+            (soldierPoints.get(soldier.id) || 0) + dutyType.weightPoints
+          );
+        }
+        created.push({
+          date: dateStr,
+          dutyType: dutyType.name,
+          soldiers: assigned.map((s) => s.fullName),
+        });
       }
-
-      created.push({
-        date: dateStr,
-        dutyType: dutyType.name,
-        soldiers: assigned.map((s) => s.fullName),
-      });
     }
   }
 

@@ -44,6 +44,7 @@ import {
   Weight,
   UsersRound,
   CalendarClock,
+  Clock,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -54,6 +55,10 @@ interface DutyType {
   weightPoints: number;
   defaultRequiredPeople: number;
   defaultFrequency: string;
+  scheduleType: string;
+  rotationIntervalHours: number | null;
+  defaultStartHour: number | null;
+  defaultEndHour: number | null;
   isActive: boolean;
 }
 
@@ -79,6 +84,11 @@ const frequencyLabels: Record<string, string> = {
   monthly: "חודשי",
 };
 
+const scheduleTypeLabels: Record<string, string> = {
+  daily: "יומי (פעם ביום)",
+  hourly: "שעתי (החלפה כל X שעות)",
+};
+
 export default function DutyTypesPage() {
   const [dutyTypes, setDutyTypes] = useState<DutyType[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -90,6 +100,10 @@ export default function DutyTypesPage() {
     weightPoints: 1,
     defaultRequiredPeople: 1,
     defaultFrequency: "daily",
+    scheduleType: "daily",
+    rotationIntervalHours: 2,
+    defaultStartHour: 8,
+    defaultEndHour: 20,
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -116,6 +130,10 @@ export default function DutyTypesPage() {
       weightPoints: 1,
       defaultRequiredPeople: 1,
       defaultFrequency: "daily",
+      scheduleType: "daily",
+      rotationIntervalHours: 2,
+      defaultStartHour: 8,
+      defaultEndHour: 20,
     });
     setDialogOpen(true);
   };
@@ -128,6 +146,10 @@ export default function DutyTypesPage() {
       weightPoints: dt.weightPoints,
       defaultRequiredPeople: dt.defaultRequiredPeople,
       defaultFrequency: dt.defaultFrequency,
+      scheduleType: dt.scheduleType || "daily",
+      rotationIntervalHours: dt.rotationIntervalHours ?? 2,
+      defaultStartHour: dt.defaultStartHour ?? 8,
+      defaultEndHour: dt.defaultEndHour ?? 20,
     });
     setDialogOpen(true);
   };
@@ -143,13 +165,23 @@ export default function DutyTypesPage() {
       if (editingType) {
         await api(`/api/duty-types/${editingType.id}`, {
           method: "PUT",
-          body: JSON.stringify(formData),
+          body: JSON.stringify({
+            ...formData,
+            rotationIntervalHours: formData.scheduleType === "hourly" ? formData.rotationIntervalHours : null,
+            defaultStartHour: formData.scheduleType === "hourly" ? formData.defaultStartHour : null,
+            defaultEndHour: formData.scheduleType === "hourly" ? formData.defaultEndHour : null,
+          }),
         });
         toast.success("סוג תורנות עודכן");
       } else {
         await api("/api/duty-types", {
           method: "POST",
-          body: JSON.stringify(formData),
+          body: JSON.stringify({
+            ...formData,
+            rotationIntervalHours: formData.scheduleType === "hourly" ? formData.rotationIntervalHours : null,
+            defaultStartHour: formData.scheduleType === "hourly" ? formData.defaultStartHour : null,
+            defaultEndHour: formData.scheduleType === "hourly" ? formData.defaultEndHour : null,
+          }),
         });
         toast.success("סוג תורנות נוסף");
       }
@@ -296,6 +328,77 @@ export default function DutyTypesPage() {
                   </SelectContent>
                 </Select>
               </div>
+              <div className="space-y-2">
+                <Label>סוג שיבוץ</Label>
+                <Select
+                  value={formData.scheduleType}
+                  onValueChange={(v) =>
+                    setFormData({ ...formData, scheduleType: v })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(scheduleTypeLabels).map(([key, label]) => (
+                      <SelectItem key={key} value={key}>
+                        {label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {formData.scheduleType === "hourly" && (
+                <>
+                  <div className="space-y-2">
+                    <Label>החלפה כל (שעות)</Label>
+                    <Input
+                      type="number"
+                      min={1}
+                      max={12}
+                      value={formData.rotationIntervalHours}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          rotationIntervalHours: parseInt(e.target.value) || 2,
+                        })
+                      }
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>שעת התחלה</Label>
+                      <Input
+                        type="number"
+                        min={0}
+                        max={23}
+                        value={formData.defaultStartHour}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            defaultStartHour: parseInt(e.target.value) || 8,
+                          })
+                        }
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>שעת סיום</Label>
+                      <Input
+                        type="number"
+                        min={0}
+                        max={24}
+                        value={formData.defaultEndHour}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            defaultEndHour: parseInt(e.target.value) || 20,
+                          })
+                        }
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
             <DialogFooter>
               <DialogClose asChild>
@@ -345,7 +448,7 @@ export default function DutyTypesPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-3 mt-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-4">
                 <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
                   <Weight className="w-3.5 h-3.5" />
                   <span>{dt.weightPoints} נק׳</span>
@@ -358,6 +461,14 @@ export default function DutyTypesPage() {
                   <CalendarClock className="w-3.5 h-3.5" />
                   <span>{frequencyLabels[dt.defaultFrequency]}</span>
                 </div>
+                {dt.scheduleType === "hourly" && (
+                  <div className="flex items-center gap-1.5 text-sm text-muted-foreground col-span-2 sm:col-span-3">
+                    <Clock className="w-3.5 h-3.5" />
+                    <span>
+                      שעתי: כל {dt.rotationIntervalHours} שעות ({dt.defaultStartHour ?? 8}:00–{dt.defaultEndHour ?? 20}:00)
+                    </span>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>

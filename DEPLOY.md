@@ -32,6 +32,12 @@ npm run db:seed
 
 **חלופה:** אם החיבור איטי (Neon cold start), הרץ את ה-SQL מ-`drizzle/0000_natural_warpath.sql` ישירות ב-Neon SQL Editor.
 
+**עדכון מסד קיים:** אם כבר הרצת 0000, הרץ:
+```bash
+DATABASE_URL="..." npx tsx scripts/migrate-0001.ts
+DATABASE_URL="..." npx tsx scripts/migrate-0002.ts  # החרגת מפקדים משיבוץ
+```
+
 ## 4. משתמשי התחלה
 
 לאחר ה-seed:

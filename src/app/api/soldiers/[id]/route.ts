@@ -13,7 +13,7 @@ export async function PUT(
 
   const { id } = await params;
   const body = await request.json();
-  const { fullName, phoneE164, departmentId, status, notes } = body;
+  const { fullName, phoneE164, departmentId, status, notes, excludeFromAutoSchedule } = body;
 
   const existingRows = await db
     .select()
@@ -32,6 +32,7 @@ export async function PUT(
       ...(departmentId && { departmentId: parseInt(departmentId) }),
       ...(status && { status }),
       ...(notes !== undefined && { notes: notes?.trim() || null }),
+      ...(excludeFromAutoSchedule !== undefined && { excludeFromAutoSchedule: !!excludeFromAutoSchedule }),
     })
     .where(eq(soldiers.id, parseInt(id)));
 

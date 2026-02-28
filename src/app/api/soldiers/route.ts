@@ -20,6 +20,7 @@ export async function GET(request: NextRequest) {
       departmentId: soldiers.departmentId,
       departmentName: departments.name,
       status: soldiers.status,
+      excludeFromAutoSchedule: soldiers.excludeFromAutoSchedule,
       notes: soldiers.notes,
       createdAt: soldiers.createdAt,
     })
@@ -46,7 +47,7 @@ export async function POST(request: NextRequest) {
   if (isErrorResponse(auth)) return auth;
 
   const body = await request.json();
-  const { fullName, phoneE164, departmentId, status: soldierStatus, notes } = body;
+  const { fullName, phoneE164, departmentId, status: soldierStatus, notes, excludeFromAutoSchedule } = body;
 
   if (!fullName?.trim() || !phoneE164?.trim() || !departmentId) {
     return NextResponse.json(
@@ -62,6 +63,7 @@ export async function POST(request: NextRequest) {
       phoneE164: phoneE164.trim(),
       departmentId: parseInt(departmentId),
       status: soldierStatus || "active",
+      excludeFromAutoSchedule: excludeFromAutoSchedule === true,
       notes: notes?.trim() || null,
     })
     .returning({ id: soldiers.id });
